@@ -41,11 +41,14 @@ Once you are satisfied with the model's performance, the pipeline prepares it fo
 ~~~~~~~~~~~~~~~~
 You must manually download the **Hailo Dataflow Compiler wheel (.whl file)** for Hailo-10h, X86, Linux, Python 3.11 from the Hailo Developer Zone and place it in the root directory.
 
-Download:
+Installation
+~~~~~~~~~~~~
+Clone the repository first:
+
 .. code-block:: bash
 
     git clone https://github.com/Airium001/airium-yolo-custom-train.git
-    cd ./airium-yolo-custom-train
+    cd airium-yolo-custom-train
 
 2. System Setup
 ~~~~~~~~~~~~~~~
