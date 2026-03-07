@@ -42,19 +42,19 @@ Install the required Python libraries to run the Streamlit dashboards:
 
 ```bash
 chmod +x install_gui_deps.sh
-./install_gui_deps.sh
+./install_gui_deps.sh'''
 
 🖥️ Running the Dashboards
 To start the Training Dashboard:
 
 '''bash
 source ai_env/bin/activate
-streamlit run train_app.py
+streamlit run train_app.py'''
 
 To start the Detection Dashboard:
 '''bash
 source ai_env/bin/activate
-streamlit run app.py
+streamlit run app.py'''
 
 
 
