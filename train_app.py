@@ -187,21 +187,49 @@ if os.path.exists(target_dir):
     
     # Clean UI grouping using tabs
     tab_metrics, tab_val, tab_local, tab_drive = st.tabs([
-        "📊 Metrics", 
+        "📊 Metrics & Plots", 
         "🖼️ Validation Previews", 
         "💻 Local ZIP", 
         "☁️ GDrive Upload"
     ])
     
-    # --- TAB 1: METRICS ---
+    # --- TAB 1: METRICS & PLOTS ---
     with tab_metrics:
-        img_col1, img_col2 = st.columns(2)
-        with img_col1:
-            res_img = os.path.join(target_dir, "results.png")
-            if os.path.exists(res_img): st.image(res_img, caption="Metrics Timeline", use_container_width=True)
-        with img_col2:
+        st.markdown("#### 📈 Training Overview")
+        res_img = os.path.join(target_dir, "results.png")
+        if os.path.exists(res_img): 
+            st.image(res_img, caption="Losses and Metrics Timeline", use_container_width=True)
+
+        st.markdown("#### 🎯 Confusion Matrices")
+        cm_col1, cm_col2 = st.columns(2)
+        with cm_col1:
             mat_img = os.path.join(target_dir, "confusion_matrix.png")
-            if os.path.exists(mat_img): st.image(mat_img, caption="Confusion Matrix", use_container_width=True)
+            if os.path.exists(mat_img): st.image(mat_img, caption="Absolute Confusion Matrix", use_container_width=True)
+        with cm_col2:
+            mat_norm_img = os.path.join(target_dir, "confusion_matrix_normalized.png")
+            if os.path.exists(mat_norm_img): st.image(mat_norm_img, caption="Normalized Confusion Matrix", use_container_width=True)
+
+        st.markdown("#### 📊 Confidence Curves")
+        c_col1, c_col2 = st.columns(2)
+        with c_col1:
+            f1_img = os.path.join(target_dir, "F1_curve.png")
+            if os.path.exists(f1_img): st.image(f1_img, caption="F1-Confidence Curve", use_container_width=True)
+            p_img = os.path.join(target_dir, "P_curve.png")
+            if os.path.exists(p_img): st.image(p_img, caption="Precision-Confidence Curve", use_container_width=True)
+        with c_col2:
+            pr_img = os.path.join(target_dir, "PR_curve.png")
+            if os.path.exists(pr_img): st.image(pr_img, caption="Precision-Recall Curve", use_container_width=True)
+            r_img = os.path.join(target_dir, "R_curve.png")
+            if os.path.exists(r_img): st.image(r_img, caption="Recall-Confidence Curve", use_container_width=True)
+
+        st.markdown("#### 🏷️ Dataset Labels Analysis")
+        l_col1, l_col2 = st.columns(2)
+        with l_col1:
+            labels_img = os.path.join(target_dir, "labels.jpg")
+            if os.path.exists(labels_img): st.image(labels_img, caption="Dataset Labels Overview (Bounding Box Distributions)", use_container_width=True)
+        with l_col2:
+            labels_cor_img = os.path.join(target_dir, "labels_correlogram.jpg")
+            if os.path.exists(labels_cor_img): st.image(labels_cor_img, caption="Labels Correlogram (X, Y, Width, Height)", use_container_width=True)
 
     # --- TAB 2: VALIDATION PREVIEWS ---
     with tab_val:
