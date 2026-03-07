@@ -59,10 +59,9 @@ deactivate
 echo "ai_env setup complete."
 
 # 4. Hailo Dataflow Compiler Environment Setup
-echo "Setting up Hailo environment..."
-chmod +x setup_hailo_env.sh 
-./setup_hailo_env.sh
-
+echo "Setting up Hailo environment (hailo_dfc_env)..."
+# Create the environment directly, skipping the missing setup_hailo_env.sh script
+python3.11 -m venv hailo_dfc_env
 source hailo_dfc_env/bin/activate
 
 echo "Installing Hailo Dataflow Compiler..."
@@ -74,6 +73,7 @@ cd hailo_model_zoo
 pip install -e .
 cd ..
 
+echo "Cloning RasPi YOLO repository..."
 git clone https://github.com/LukeDitria/RasPi_YOLO.git
 
 deactivate
