@@ -84,6 +84,7 @@ Install the required Python libraries to run the Streamlit dashboards:
 If your ``.pt`` model is ready and you want to deploy it to your Raspberry Pi with the Hailo-10h AI Hat, compile it with the following command:
 
 .. code-block:: bash
+    
     source ai_env/bin/activate
     streamlit run hailo_compile_app.py
 
