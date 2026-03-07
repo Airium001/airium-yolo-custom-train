@@ -1,0 +1,21 @@
+# Web Framework & UI
+streamlit==1.54.0 
+
+# Data & Image Processing
+pandas==2.3.3 
+numpy==2.4.2 [cite: 121]
+pillow==12.1.1 
+opencv-python-headless==4.13.0.92 
+PyYAML==6.0.3 
+
+# Model Training & Inference
+ultralytics==8.4.14 
+
+# Live Camera Streaming
+streamlit-webrtc==0.64.5 
+av==16.1.0 [cite: 57, 58]
+
+# Google Drive Integration
+google-auth==2.48.0 [cite: 112]
+google-api-python-client==2.190.0 [cite: 89, 99, 107, 108]
+google-auth-oauthlib
