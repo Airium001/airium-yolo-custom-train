@@ -87,6 +87,20 @@ is placed. The pipeline runs four sequential steps:
 
 1. Prerequisites
 ~~~~~~~~~~~~~~~~
+**Hardware Requirements**
+
+* **GPU:** NVIDIA GTX 1050 Ti (4 GB VRAM) or higher — required for GPU-accelerated
+  training. CPU-only training is supported but significantly slower.
+* **RAM:** 8 GB minimum, 16 GB recommended.
+* **Storage:** At least 10 GB of free disk space for the virtual environments,
+  dataset, and training outputs.
+
+**Software Requirements**
+
+* WSL2 (Ubuntu 22.04+) or native Linux on x86_64.
+* NVIDIA GPU drivers with CUDA 11.8 support installed on the host system.
+* A registered `Hailo Developer Zone <https://hailo.ai/developer-zone/>`_ account
+  to download the Hailo Dataflow Compiler.
 The setup script ``setup_yolo_hailo.sh`` will automatically download the **Hailo 
 Dataflow Compiler wheel (.whl file)** for Hailo-10h, X86, Linux, Python 3.11 from 
 the Hailo Developer Zone and place it in the root directory.
