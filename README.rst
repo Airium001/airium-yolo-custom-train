@@ -87,7 +87,9 @@ is placed. The pipeline runs four sequential steps:
 
 1. Prerequisites
 ~~~~~~~~~~~~~~~~
-You must manually download the **Hailo Dataflow Compiler wheel (.whl file)** for Hailo-10h, X86, Linux, Python 3.11 from the Hailo Developer Zone and place it in the root directory.
+The setup script ``setup_yolo_hailo.sh`` will automatically download the **Hailo 
+Dataflow Compiler wheel (.whl file)** for Hailo-10h, X86, Linux, Python 3.11 from 
+the Hailo Developer Zone and place it in the root directory.
 
 Installation
 ~~~~~~~~~~~~
