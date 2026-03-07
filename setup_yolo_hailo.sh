@@ -65,7 +65,7 @@ source hailo_dfc_env/bin/activate
 
 # --- ADD THESE TWO LINES ---
 echo "Downloading Hailo Dataflow Compiler from GitHub Releases..."
-wget https://github.com/Airium001/airium-yolo-custom-train/releases/download/Hailo10H_Compiler/hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
+wget https://github.com/Airium001/airium-yolo-custom-train/releases/download/v1.0.0/hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
 # ---------------------------
 
 echo "Installing Hailo Dataflow Compiler..."
