@@ -10,5 +10,5 @@ You must manually download the Hailo Dataflow Compiler wheel (`.whl` file) for H
 ### 2. System Setup
 Run the main setup script to install system dependencies, Python 3.11.9 (if not present), and create the necessary virtual environments (`ai_env` and `hailo_dfc_env`):
 ```bash
-chmod +x setup_system.sh
+chmod +x setup_yolo_hailo.sh
 ./setup_system.sh
