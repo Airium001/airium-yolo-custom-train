@@ -45,7 +45,7 @@ Download:
 .. code-block:: bash
 
     git clone https://github.com/Airium001/airium-yolo-custom-train.git
-    cd airium-yolo-custom-train
+    cd ./airium-yolo-custom-train
 
 2. System Setup
 ~~~~~~~~~~~~~~~
