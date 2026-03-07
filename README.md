@@ -35,7 +35,8 @@ You must manually download the **Hailo Dataflow Compiler wheel (`.whl` file)** f
 Run the main setup script to install system dependencies, Python 3.11.9, and create the necessary virtual environments (`ai_env` and `hailo_dfc_env`):
 ```bash
 chmod +x setup_yolo_hailo.sh
-./setup_yolo_hailo.sh
+./setup_yolo_hailo.sh ```bash
+
 ### 3. Install GUI Dependencies
 Install the required Python libraries to run the Streamlit dashboards:
 
