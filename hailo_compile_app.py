@@ -10,6 +10,11 @@ import tempfile
 import time
 
 # ==========================================
+# Base directory — all paths are relative to this script's location
+# ==========================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ==========================================
 # Page Config
 # ==========================================
 st.set_page_config(
@@ -184,19 +189,19 @@ st.sidebar.markdown("---")
 
 st.sidebar.header("Environments")
 ai_env_path   = st.sidebar.text_input("ai_env path (YOLO/export)",
-                                       value=os.path.expanduser("~/ai_env"))
+                                       value=os.path.join(BASE_DIR, "ai_env"))
 hailo_env_path = st.sidebar.text_input("hailo_dfc_env path (compilation)",
-                                        value=os.path.expanduser("~/hailo_dfc_env"))
+                                        value=os.path.join(BASE_DIR, "hailo_dfc_env"))
 
 st.sidebar.header("Model")
-pt_model_path = st.sidebar.text_input("Source .pt model path", value="runs/detect/train/weights/best.pt")
+pt_model_path = st.sidebar.text_input("Source .pt model path", value=os.path.join(BASE_DIR, "runs", "detect", "train", "weights", "best.pt"))
 
 st.sidebar.header("Hardware")
 hw_arch       = st.sidebar.selectbox("HW Architecture", ["hailo10h", "hailo8", "hailo8l"], index=0)
 num_classes   = st.sidebar.number_input("Number of classes", min_value=1, value=4)
 
 st.sidebar.header("Output")
-output_dir    = st.sidebar.text_input("Output directory", value=os.path.expanduser("~/hailo_output"))
+output_dir    = st.sidebar.text_input("Output directory", value=os.path.join(BASE_DIR, "hailo_output"))
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Pipeline runs sequentially. Complete each step before proceeding.")
@@ -280,14 +285,16 @@ with st.expander("▸ Step 2 — Generate Calibration Data", expanded=False):
     c1, c2 = st.columns(2)
     with c1:
         calib_script  = st.text_input("Path to hailo_calibration_data.py",
-                                       value=os.path.expanduser("hailo_calibration_data.py"))
+                                       value=os.path.join(BASE_DIR, "RasPi_YOLO", "hailo_calibration_data.py"))
         data_dir      = st.text_input("Training images dir (--data_dir)",
-                                       value="train_data/train/images")
+                                       value=os.path.join(BASE_DIR, "train_data", "train", "images"))
     with c2:
         calib_out_dir = st.text_input("Calibration output dir (--target_dir)",
                                        value=os.path.join(output_dir, "calib"))
         calib_imgsz   = st.text_input("Image size (H W)", value="640 640")
-        num_images    = st.number_input("Number of calibration images", value=135, min_value=10)
+        num_images    = st.number_input("Number of calibration images", value=256, min_value=10)
+    if num_images < 200:
+        st.warning("⚠️ Recommended minimum is 200 images. Below this, quantization may fail with NegativeSlopeExponentNonFixable errors.")
 
     if st.button("▶ Generate Calib Data", key="btn_step2"):
         if not os.path.exists(calib_script):
@@ -410,6 +417,24 @@ with st.expander("▸ Step 4 — Compile to .hef", expanded=False):
     if use_har:
         har_input = st.text_input("HAR file path", value=st.session_state.har_path)
 
+    perf_profile = st.selectbox(
+        "Performance profile",
+        ["default", "fastest_single_control_flow", "balanced", "latency"],
+        index=0,
+        help="Use 'fastest_single_control_flow' if compilation fails with NegativeSlopeExponentNonFixable quantization errors — it bypasses the strict optimization that causes the issue on CPU."
+    )
+
+    # Count calib images so user knows what the compiler will actually see
+    if os.path.exists(calib_path_in):
+        calib_count = len([f for f in os.listdir(calib_path_in)
+                           if f.lower().endswith(('.jpg', '.jpeg', '.png', '.npy'))])
+        if calib_count < 200:
+            st.warning(f"⚠️ Only {calib_count} calibration images found in {calib_path_in}. "
+                       "The Hailo compiler recommends at least 1024 (minimum ~200). "
+                       "Re-run Step 2 with a higher image count to avoid quantization failures.")
+        else:
+            st.success(f"✓ {calib_count} calibration images found — ready to compile.")
+
     st.info("⏱️ Compilation typically takes 8–10 minutes. The log will appear when complete.")
 
     if st.button("▶ Compile to .hef", type="primary", key="btn_step4"):
@@ -423,6 +448,8 @@ with st.expander("▸ Step 4 — Compile to .hef", expanded=False):
                 env["CUDA_VISIBLE_DEVICES"] = "-1"
                 hailomz_bin = os.path.join(hailo_env_path, "bin", "hailomz")
 
+                profile_args = ["--performance-profile", perf_profile] if perf_profile != "default" else []
+
                 if use_har:
                     cmd = [
                         hailomz_bin, "compile", compile_model,
@@ -430,7 +457,7 @@ with st.expander("▸ Step 4 — Compile to .hef", expanded=False):
                         "--hw-arch",    hw_arch,
                         "--classes",    str(num_classes),
                         "--calib-path", calib_path_in,
-                    ]
+                    ] + profile_args
                 else:
                     cmd = [
                         hailomz_bin, "compile", compile_model,
@@ -438,7 +465,7 @@ with st.expander("▸ Step 4 — Compile to .hef", expanded=False):
                         "--hw-arch",    hw_arch,
                         "--classes",    str(num_classes),
                         "--calib-path", calib_path_in,
-                    ]
+                    ] + profile_args
                 rc, log = run_cmd(cmd, env=env)
 
             # hailomz writes .hef to cwd
