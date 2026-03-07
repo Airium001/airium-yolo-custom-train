@@ -60,9 +60,13 @@ echo "ai_env setup complete."
 
 # 4. Hailo Dataflow Compiler Environment Setup
 echo "Setting up Hailo environment (hailo_dfc_env)..."
-# Create the environment directly, skipping the missing setup_hailo_env.sh script
 python3.11 -m venv hailo_dfc_env
 source hailo_dfc_env/bin/activate
+
+# --- ADD THESE TWO LINES ---
+echo "Downloading Hailo Dataflow Compiler from GitHub Releases..."
+wget https://github.com/Airium001/airium-yolo-custom-train/releases/download/v1.0.0/hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
+# ---------------------------
 
 echo "Installing Hailo Dataflow Compiler..."
 pip install hailo_dataflow_compiler-*.whl
