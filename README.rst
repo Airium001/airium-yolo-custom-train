@@ -138,5 +138,14 @@ If your ``.pt`` model is ready and you want to deploy it to your Raspberry Pi wi
     source ai_env/bin/activate
     streamlit run hailo_compile_app.py
 
+Acknowledgements
+----------------
+The calibration data script used in the Hailo compilation pipeline is based on the
+work of `Luke Ditria <https://github.com/LukeDitria>`_:
 
+* **RasPi_YOLO** — https://github.com/LukeDitria/RasPi_YOLO
+
+  A collection of tools for running YOLO models on Raspberry Pi with the Hailo AI Hat,
+  including the ``hailo_calibration_data.py`` script used in Step 2 of the compilation
+  pipeline.
 
