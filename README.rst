@@ -53,13 +53,34 @@ two modes:
 * **GPU Cleanup:** A **Free GPU & Unload Model** button in the sidebar releases memory when
   switching between models.
 
-2. Hardware Compilation Phase (``compilation/``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Once you are satisfied with the model's performance, the pipeline prepares it for edge deployment.
+2. Hardware Compilation Phase (``hailo_compile_app.py``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The **Hailo10h Compilation Dashboard** is a dedicated Streamlit GUI that converts your
+trained ``.pt`` model into a ``.hef`` file ready to deploy on Raspberry Pi with the
+Hailo-10h AI Hat. All paths default to the directory where ``hailo_compile_app.py``
+is placed. The pipeline runs four sequential steps:
 
-* **Calibration Data:** The ``hailo_calibration_data.py`` script automatically processes your dataset images (resizing and cropping) to create the exact calibration set the Hailo compiler needs.
-* **Conversion:** The ``.pt`` file is exported to ``.onnx`` and then compiled into a ``.hef`` file using the Hailo Dataflow Compiler, optimizing it to run efficiently on the Hailo-10h neural processing unit.
+* **Step 1 — Export .pt to .onnx:** Runs the ``yolo`` CLI binary inside ``ai_env`` to
+  export your trained model to ONNX format. Configure image size (default 512 px) and
+  ONNX opset (default 11). ``CUDA_VISIBLE_DEVICES=-1`` is set automatically to avoid
+  GPU conflicts. The ``.onnx`` file is saved to the ``hailo_output/`` folder.
 
+* **Step 2 — Generate Calibration Data:** Runs ``hailo_calibration_data.py`` from the
+  ``RasPi_YOLO/`` directory to resize and crop your training images into the calibration
+  set the Hailo compiler requires. Default is 256 images at 640×640 px. A warning is
+  shown if fewer than 200 images are provided, as this may cause quantization failures.
+
+* **Step 3 — Parse Model:** Runs ``hailomz parse`` inside ``hailo_dfc_env`` to convert
+  the ``.onnx`` into a ``.har`` intermediate file. End-node names are pre-filled with
+  standard YOLOv8n defaults and can be edited for other architectures.
+
+* **Step 4 — Compile to .hef:** Runs ``hailomz compile`` inside ``hailo_dfc_env``.
+  Accepts either the ``.onnx`` directly or the pre-parsed ``.har`` from Step 3 for
+  faster re-compilation. A live calibration image counter warns if the calib folder
+  has too few images before compilation starts. A performance profile selector is
+  provided — use ``fastest_single_control_flow`` if compilation fails with quantization
+  errors on CPU. Compilation typically takes 8–10 minutes. A download button appears
+  automatically when the ``.hef`` is ready.
 
 🚀 Getting Started
 ------------------
