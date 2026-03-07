@@ -9,24 +9,51 @@ This repository provides a complete, end-to-end pipeline for training custom YOL
 
 The workflow is broken down into three main stages:
 
-1. Training Phase (``train_app.py``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The **YOLO Custom Training Dashboard** is a Streamlit GUI that simplifies the entire model training process.
+1. Training & Inference Phase (``train_app.py``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The **YOLO Training & Detection Dashboard** is a unified Streamlit GUI that covers the entire
+model development workflow in a single app. Use the **sidebar radio button** to switch between
+two modes:
 
-* **Dataset Configuration:** Includes a built-in YAML editor to easily modify your classes and dataset paths directly from the browser.
-* **Model Selection:** Choose between Nano, Small, Medium YOLOv8 base weights, or load a custom ``.pt`` file to resume training.
-* **Live Monitoring:** As the model trains, the dashboard provides live, updating charts for ``mAP50``, ``Box Loss``, and ``Class Loss``.
-* **Export Options:** Once training finishes, you can pack the entire results folder into a ZIP file for local download, or directly authenticate and upload your ``best.pt`` weights to a shared Google Drive folder.
+**🏋️ Train Model Mode**
 
-2. Inference & Testing Phase (``app.py``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The **Multi-Source Detection Dashboard** allows you to test your trained models instantly.
+* **Dataset Configuration:** Browse your project directory to auto-discover ``.yaml`` files,
+  or enter a path manually. A built-in YAML editor lets you add, remove, or rename classes
+  and update ``nc`` without leaving the browser.
+* **Model Selection:** Choose between ``yolov8n.pt`` (Nano), ``yolov8s.pt`` (Small),
+  ``yolov8m.pt`` (Medium), or provide a custom ``.pt`` path to resume training from
+  existing weights.
+* **Training Parameters:** Configure epochs, image size (128–1280 px), batch size, device
+  (``cpu`` or GPU ``0``), optimizer (SGD / Adam / AdamW / auto), and learning rate directly
+  from the sidebar.
+* **Live Monitoring:** Real-time ``mAP50``, ``Box Loss``, and ``Class Loss`` charts update
+  after every epoch alongside a progress bar and epoch counter.
+* **Results Viewer:** After training, browse confusion matrices, F1/Precision/Recall
+  confidence curves, label distribution plots, and validation batch previews — all inside
+  the dashboard.
+* **Export Options:** Pack the entire results folder into a ``.zip`` for local download, or
+  authenticate via OAuth and upload ``best.pt`` directly to a shared Google Drive folder.
+* **GPU Cleanup:** The training model is automatically unloaded from GPU memory after
+  completion. A manual **Free GPU Memory** button in the sidebar is also available between
+  sessions.
 
-* **Model Loading:** Enter the path to your newly trained ``best.pt`` file to load it into memory.
-* **Flexible Inputs:** Test the model's accuracy by uploading static **Images**, running it over recorded **Videos**, or connecting to your **Live Camera** using WebRTC.
-* **Adjustable Confidence:** Tweak the confidence threshold via a sidebar slider in real-time to see how the model performs under different strictness levels.
+**🎯 Run Detection Mode**
 
-3. Hardware Compilation Phase (``compilation/``)
+* **Model Loading:** Enter the path to any ``.pt`` weights file and click **Load Model**, or
+  load the freshly trained model directly from the training result with one click.
+* **Image Detection:** Upload a ``JPG`` or ``PNG`` and run single-shot inference with
+  annotated bounding box output.
+* **Video Detection:** Upload an ``MP4``, ``AVI``, or ``MOV`` file and process every frame
+  with live bounding box rendering.
+* **Live Camera:** Stream from your browser camera via WebRTC with per-frame YOLO inference.
+  A frame-skip slider (1–10) prevents stream freezing on CPU. Resolution is capped at
+  640×480 and Google STUN servers are pre-configured for NAT/firewall compatibility.
+* **Adjustable Confidence:** A sidebar slider controls the confidence threshold in real-time
+  across all input sources.
+* **GPU Cleanup:** A **Free GPU & Unload Model** button in the sidebar releases memory when
+  switching between models.
+
+2. Hardware Compilation Phase (``compilation/``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Once you are satisfied with the model's performance, the pipeline prepares it for edge deployment.
 
