@@ -212,14 +212,14 @@ if os.path.exists(target_dir):
         st.markdown("#### 📊 Confidence Curves")
         c_col1, c_col2 = st.columns(2)
         with c_col1:
-            f1_img = os.path.join(target_dir, "F1_curve.png")
+            f1_img = os.path.join(target_dir, "BoxF1_curve.png")
             if os.path.exists(f1_img): st.image(f1_img, caption="F1-Confidence Curve", use_container_width=True)
-            p_img = os.path.join(target_dir, "P_curve.png")
+            p_img = os.path.join(target_dir, "BoxP_curve.png")
             if os.path.exists(p_img): st.image(p_img, caption="Precision-Confidence Curve", use_container_width=True)
         with c_col2:
-            pr_img = os.path.join(target_dir, "PR_curve.png")
+            pr_img = os.path.join(target_dir, "BoxPR_curve.png")
             if os.path.exists(pr_img): st.image(pr_img, caption="Precision-Recall Curve", use_container_width=True)
-            r_img = os.path.join(target_dir, "R_curve.png")
+            r_img = os.path.join(target_dir, "BoxR_curve.png")
             if os.path.exists(r_img): st.image(r_img, caption="Recall-Confidence Curve", use_container_width=True)
 
         st.markdown("#### 🏷️ Dataset Labels Analysis")
