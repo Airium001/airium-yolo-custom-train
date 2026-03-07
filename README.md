@@ -36,7 +36,6 @@ Run the main setup script to install system dependencies, Python 3.11.9, and cre
 ```bash
 chmod +x setup_yolo_hailo.sh
 ./setup_yolo_hailo.sh
-
 ### 3. Install GUI Dependencies
 Install the required Python libraries to run the Streamlit dashboards:
 
@@ -44,17 +43,14 @@ Install the required Python libraries to run the Streamlit dashboards:
 chmod +x install_gui_deps.sh
 ./install_gui_deps.sh
 
-### 🖥️ Running the Dashboards
+🖥️ Running the Dashboards
 To start the Training Dashboard:
 
 ```bash
 source ai_env/bin/activate
 streamlit run train_app.py
+To start the Detection Dashboard:
 
-### To start the Detection Dashboard:
 ```bash
 source ai_env/bin/activate
 streamlit run app.py
-
-
-
