@@ -63,16 +63,10 @@ Install the required Python libraries to run the Streamlit dashboards:
 🖥️ Running the Dashboards
 -------------------------
 
-**To start the Training Dashboard:**
+**To start the Training & Testing Dashboard:**
 
 .. code-block:: bash
 
     source ai_env/bin/activate
     streamlit run train_app.py
 
-**To start the Detection Dashboard:**
-
-.. code-block:: bash
-
-    source ai_env/bin/activate
-    streamlit run app.py
