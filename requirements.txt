@@ -7,9 +7,13 @@ numpy==2.4.2
 pillow==12.1.1
 opencv-python-headless==4.13.0.92
 PyYAML==6.0.3
+tqdm==4.67.3
 
 # Model Training & Inference
 ultralytics==8.4.14
+torch==2.7.1+cu118
+torchvision==0.22.1+cu118
+torchaudio==2.7.1+cu118
 
 # Live Camera Streaming
 streamlit-webrtc==0.64.5
@@ -18,4 +22,5 @@ av==16.1.0
 # Google Drive Integration
 google-auth==2.48.0
 google-api-python-client==2.190.0
-google-auth-oauthlib
+google-auth-oauthlib==1.2.4
+google-auth-httplib2==0.3.0
