@@ -97,7 +97,7 @@ is placed. The pipeline runs four sequential steps:
 
 **Software Requirements**
 
-* WSL2 (Ubuntu 22.04+) or native Linux on x86_64.
+* WSL2 (Ubuntu 24.04 LTS) or native Linux on x86_64.
 * NVIDIA GPU drivers with CUDA 11.8 support installed on the host system.
 * A registered `Hailo Developer Zone <https://hailo.ai/developer-zone/>`_ account
   to download the Hailo Dataflow Compiler.
