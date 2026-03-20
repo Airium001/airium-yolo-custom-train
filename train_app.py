@@ -11,6 +11,12 @@ from ultralytics import YOLO
 from streamlit_webrtc import webrtc_streamer
 import av
 
+# Cloud download imports
+import gdown
+import zipfile
+import requests
+from roboflow import Roboflow
+
 # Suppress harmless WebRTC/aioice ICE cleanup errors that fire on disconnect
 logging.getLogger("aioice.stun").setLevel(logging.CRITICAL)
 logging.getLogger("aioice.ice").setLevel(logging.CRITICAL)
@@ -28,6 +34,25 @@ import torch
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 # ==========================================
+# Page Config & Custom CSS
+# ==========================================
+st.set_page_config(page_title="YOLO All-in-One Dashboard", page_icon="🎯", layout="wide")
+
+# Hide Streamlit default menus and footers, and adjust top padding
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 2rem;
+            }
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# ==========================================
 # Helper Functions
 # ==========================================
 
@@ -41,8 +66,7 @@ def gpu_cleanup(label: str = ""):
         torch.cuda.empty_cache()
         torch.cuda.ipc_collect()
     if label:
-        st.success(f"🧹 {label} — GPU/CPU memory freed. Ready for a fresh run.")
-
+        st.toast(f"🧹 {label} — GPU/CPU memory freed.", icon="🚀")
 
 def find_yaml_files(base_dir):
     if not os.path.exists(base_dir):
@@ -63,13 +87,12 @@ def upload_single_file_to_gdrive(file_path, new_filename, drive_folder_id, clien
                 creds = flow.run_local_server(port=8080)
             with open('token.json', 'w') as token:
                 token.write(creds.to_json())
-        st.info("☁️ Authenticated successfully! Connecting to Drive...")
+        
         service = build('drive', 'v3', credentials=creds)
-        st.info(f"🚀 Uploading {new_filename}...")
         file_metadata = {'name': new_filename, 'parents': [drive_folder_id]}
         media = MediaFileUpload(file_path, mimetype='application/octet-stream', resumable=True)
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-        st.success(f"✅ Model successfully uploaded to Google Drive! (File ID: {file.get('id')})")
+        st.toast(f"Model successfully uploaded to Google Drive! (ID: {file.get('id')})", icon="✅")
     except Exception as e:
         st.error(f"Google Drive Upload Failed: {e}")
 
@@ -78,15 +101,79 @@ def create_full_zip(run_dir):
     zip_path = shutil.make_archive(temp_zip_base, 'zip', run_dir)
     return zip_path
 
+def web_file_browser(button_label, initial_path=".", extension="", key_prefix="fb"):
+    """Creates a dropdown file navigator inside the Streamlit UI."""
+    if f"{key_prefix}_path" not in st.session_state:
+        st.session_state[f"{key_prefix}_path"] = os.path.abspath(initial_path)
+        
+    current_path = st.session_state[f"{key_prefix}_path"]
+    
+    with st.popover(button_label, use_container_width=True):
+        st.caption(f"📂 `{current_path}`")
+        
+        # Up Directory Button
+        if st.button("⬆️ Up One Level", key=f"{key_prefix}_up", use_container_width=True):
+            st.session_state[f"{key_prefix}_path"] = os.path.dirname(current_path)
+            st.rerun()
+            
+        try:
+            items = os.listdir(current_path)
+            folders = [f for f in items if os.path.isdir(os.path.join(current_path, f))]
+            files = [f for f in items if os.path.isfile(os.path.join(current_path, f))]
+            
+            if extension:
+                files = [f for f in files if f.endswith(extension)]
+                
+            folders.sort()
+            files.sort()
+            
+            # Folder Navigation
+            selected_folder = st.selectbox("📁 Open Folder:", ["(Stay here)"] + folders, key=f"{key_prefix}_folder")
+            if selected_folder != "(Stay here)":
+                st.session_state[f"{key_prefix}_path"] = os.path.join(current_path, selected_folder)
+                st.rerun()
+                
+            # File Selection
+            selected_file = st.selectbox(f"📄 Select {extension} File:", ["(None)"] + files, key=f"{key_prefix}_file")
+            
+            if selected_file != "(None)":
+                return os.path.join(current_path, selected_file)
+                
+        except Exception as e:
+            st.error(f"Cannot access path: {e}")
+            
+    return None
+
+def extract_dataset_zip(zip_path, extract_to_folder):
+    """Extracts a ZIP and searches for the dataset.yaml inside."""
+    with st.spinner(f"Extracting to {extract_to_folder}..."):
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to_folder)
+        
+    yaml_files = glob.glob(os.path.join(extract_to_folder, "**", "*.yaml"), recursive=True)
+    for y in yaml_files:
+        if "dataset.yaml" in y.lower() or "data.yaml" in y.lower():
+            return y
+    return yaml_files[0] if yaml_files else None
+
+def download_gdrive_folder(url, dest_folder="datasets/downloaded_gdrive"):
+    """Downloads a folder or zip from Google Drive using gdown."""
+    os.makedirs(dest_folder, exist_ok=True)
+    try:
+        output_path = gdown.download(url, quiet=False, fuzzy=True, output=os.path.join(dest_folder, "gdrive_dataset.zip"))
+        if output_path and output_path.endswith('.zip'):
+            return extract_dataset_zip(output_path, dest_folder)
+        return None
+    except Exception as e:
+        st.error(f"Google Drive Download Failed: {e}")
+        return None
 
 # ==========================================
-# Page Config
+# Header & GPU Status
 # ==========================================
-st.set_page_config(page_title="YOLO All-in-One Dashboard", layout="wide")
 st.title("🤖 YOLO All-in-One Dashboard")
-st.caption("Train custom models, then run detection — all in one place.")
+st.caption("Train custom models and run real-time inference seamlessly.")
 
-# GPU status badge
 if torch.cuda.is_available():
     allocated = torch.cuda.memory_allocated() / 1024**2
     reserved  = torch.cuda.memory_reserved()  / 1024**2
@@ -112,7 +199,6 @@ if "model" not in st.session_state:
 # Top-level Mode Toggle
 # ==========================================
 mode = st.sidebar.radio("🔀 Select Mode", ["🎯 Run Detection", "🏋️ Train Model"], index=0)
-
 st.sidebar.divider()
 
 # ==========================================
@@ -120,45 +206,96 @@ st.sidebar.divider()
 # ==========================================
 if mode == "🎯 Run Detection":
 
-    st.sidebar.header("Model Configuration")
-    model_path_input = st.sidebar.text_input("Enter Model Path:", "best.pt")
+    with st.sidebar.container(border=True):
+        st.subheader("⚙️ Model Configuration")
+        
+        det_model_tabs = st.tabs(["📁 Local", "☁️ GDrive / Link"])
 
-    if st.sidebar.button("Load Model"):
-        if os.path.exists(model_path_input):
-            st.session_state.model = YOLO(model_path_input)
-            st.sidebar.success(f"Loaded: {model_path_input}")
-        else:
-            st.sidebar.error("Model file not found!")
+        if "det_model_path" not in st.session_state:
+            st.session_state.det_model_path = "best.pt"
 
-    st.sidebar.header("Detection Settings")
-    confidence = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.25)
-    source_type = st.sidebar.selectbox("Input Source", ["Image", "Video", "Live Camera"])
+        # --- TAB 1: LOCAL MODEL BROWSER ---
+        with det_model_tabs[0]:
+            browsed_model = web_file_browser("🔍 Browse Local .pt", extension=".pt", key_prefix="det_browser")
+            if browsed_model:
+                st.session_state.det_model_path = browsed_model
+
+        # --- TAB 2: CLOUD MODEL DOWNLOAD ---
+        with det_model_tabs[1]:
+            st.caption("Download a .pt model from GDrive or a direct link.")
+            cloud_model_url = st.text_input("Model URL (.pt file):")
+            is_model_gdrive = "drive.google.com" in cloud_model_url
+
+            if st.button("Download Model", use_container_width=True):
+                if not cloud_model_url:
+                    st.warning("Please enter a valid URL.")
+                else:
+                    with st.spinner("Downloading model..."):
+                        dest_folder = os.path.join("models", "cloud_download")
+                        os.makedirs(dest_folder, exist_ok=True)
+                        dest_file = os.path.join(dest_folder, "downloaded_model.pt")
+
+                        try:
+                            if is_model_gdrive:
+                                gdown.download(cloud_model_url, dest_file, quiet=False, fuzzy=True)
+                            else:
+                                r = requests.get(cloud_model_url, stream=True)
+                                with open(dest_file, 'wb') as f:
+                                    for chunk in r.iter_content(chunk_size=8192):
+                                        f.write(chunk)
+
+                            if os.path.exists(dest_file):
+                                st.session_state.det_model_path = dest_file
+                                st.toast("Cloud model downloaded!", icon="✅")
+                            else:
+                                st.error("Download failed.")
+                        except Exception as e:
+                            st.error(f"Error downloading model: {e}")
+
+        st.divider()
+        model_path_input = st.text_input("Active Model Path:", value=st.session_state.det_model_path)
+        st.session_state.det_model_path = model_path_input
+
+        if st.button("Load Model", type="primary", use_container_width=True):
+            if os.path.exists(model_path_input):
+                st.session_state.model = YOLO(model_path_input)
+                st.toast(f"Model loaded: {model_path_input}", icon="✅")
+            else:
+                st.error("Model file not found!")
+
+    with st.sidebar.container(border=True):
+        st.subheader("🎛️ Detection Settings")
+        confidence = st.slider("Confidence Threshold", 0.0, 1.0, 0.25)
+        source_type = st.selectbox("Input Source", ["Image", "Video", "Live Camera"])
 
     st.sidebar.divider()
-    st.sidebar.header("🧹 Cleanup")
-    if st.sidebar.button("Free GPU & Unload Model", type="secondary"):
+    if st.sidebar.button("🧹 Free GPU & Unload Model", type="secondary", use_container_width=True):
         gpu_cleanup("Detection session cleared")
 
     st.write("### Detection Viewer")
 
     if st.session_state.model is None:
-        st.warning("👈 Please enter your model path and click 'Load Model' in the sidebar to begin.")
+        st.info(
+            "#### 👈 Welcome to the Detection Viewer\n"
+            "To get started, enter your YOLO `.pt` model path in the sidebar and click **Load Model**."
+        )
     else:
         # --- IMAGE ---
         if source_type == "Image":
             uploaded_image = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
-            if uploaded_image is not None and st.button("Run Detection"):
-                image = Image.open(uploaded_image)
-                img_array = np.array(image)
-                results = st.session_state.model.predict(source=img_array, conf=confidence, device='cpu')
-                annotated_img = results[0].plot()
-                annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
-                st.image(annotated_img, caption="Detection Results", width='stretch')
+            if uploaded_image is not None and st.button("Run Detection", type="primary"):
+                with st.spinner("Processing image..."):
+                    image = Image.open(uploaded_image)
+                    img_array = np.array(image)
+                    results = st.session_state.model.predict(source=img_array, conf=confidence, device='cpu')
+                    annotated_img = results[0].plot()
+                    annotated_img = cv2.cvtColor(annotated_img, cv2.COLOR_BGR2RGB)
+                    st.image(annotated_img, caption="Detection Results", width='stretch')
 
         # --- VIDEO ---
         elif source_type == "Video":
             uploaded_video = st.file_uploader("Upload a Video", type=["mp4", "avi", "mov"])
-            if uploaded_video is not None and st.button("Run Detection"):
+            if uploaded_video is not None and st.button("Run Detection", type="primary"):
                 tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
                 tfile.write(uploaded_video.read())
                 frame_placeholder = st.empty()
@@ -167,20 +304,17 @@ if mode == "🎯 Run Detection":
                     annotated_frame = r.plot()
                     annotated_frame = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB)
                     frame_placeholder.image(annotated_frame, channels="RGB", width='stretch')
-                st.success("Video processing complete!")
+                st.toast("Video processing complete!", icon="✅")
 
         # --- LIVE CAMERA ---
         elif source_type == "Live Camera":
             st.info("Click 'START' below to grant browser camera access.")
-
-            # Frame-skip slider: only run YOLO every N frames to prevent freeze on CPU
             process_every_n = st.slider("Run detection every N frames (higher = smoother, less frequent)", 1, 10, 3)
 
             current_model = st.session_state.model
             current_conf = confidence
             current_n = process_every_n
 
-            # Counter lives outside the callback via a mutable container
             frame_state = {"count": 0, "last_annotated": None}
 
             def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
@@ -191,14 +325,12 @@ if mode == "🎯 Run Detection":
                     results = current_model.predict(source=img, conf=current_conf, device='cpu', verbose=False)
                     frame_state["last_annotated"] = results[0].plot()
 
-                # Return last annotated frame, or raw frame if detection hasn't run yet
                 out = frame_state["last_annotated"] if frame_state["last_annotated"] is not None else img
                 return av.VideoFrame.from_ndarray(out, format="bgr24")
 
             webrtc_streamer(
                 key="yolo_detection",
                 video_frame_callback=video_frame_callback,
-                # Public STUN servers so connection works behind NAT/firewalls
                 rtc_configuration={
                     "iceServers": [
                         {"urls": ["stun:stun.l.google.com:19302"]},
@@ -216,42 +348,118 @@ if mode == "🎯 Run Detection":
 # ==========================================
 elif mode == "🏋️ Train Model":
 
-    # --- Sidebar: Dataset ---
-    st.sidebar.header("1. Dataset Configuration")
-    dataset_search_dir = st.sidebar.text_input("📂 Browse Directory for YAML:", value=os.path.dirname(os.path.abspath(__file__)))
-    available_yamls = find_yaml_files(dataset_search_dir)
-    available_yamls.insert(0, "Manual Entry...")
-    selected_yaml = st.sidebar.selectbox("📄 Select Dataset YAML:", available_yamls)
-    if selected_yaml == "Manual Entry...":
-        default_yaml = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_data", "dataset.yaml")
-        yaml_path_input = st.sidebar.text_input("Path to dataset.yaml", value=default_yaml)
-    else:
-        yaml_path_input = selected_yaml
+    with st.sidebar.container(border=True):
+        st.subheader("1. Dataset Configuration")
+        
+        data_tabs = st.tabs(["📁 Local", "🌌 Roboflow", "☁️ GDrive / Link"])
+        
+        if "train_yaml_path" not in st.session_state:
+            st.session_state.train_yaml_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_data", "dataset.yaml")
 
-    # --- Sidebar: Base Model ---
-    st.sidebar.header("2. Base Model Selection")
-    model_type = st.sidebar.selectbox("Select Model Weights", [
-        "yolov8n.pt (Nano - Fastest)",
-        "yolov8s.pt (Small - Better Accuracy)",
-        "yolov8m.pt (Medium - Balanced)",
-        "Custom Path..."
-    ])
-    model_path = st.sidebar.text_input("Enter custom .pt path:", "runs/detect/train/weights/best.pt") \
-        if model_type == "Custom Path..." else model_type.split(" ")[0]
+        with data_tabs[0]:
+            browsed_yaml = web_file_browser("🔍 Browse Local Files", extension=".yaml", key_prefix="yaml_browser")
+            if browsed_yaml:
+                st.session_state.train_yaml_path = browsed_yaml
 
-    # --- Sidebar: Training Params ---
-    st.sidebar.header("3. Training Parameters")
-    epochs = st.sidebar.number_input("Epochs", min_value=1, value=10)
-    imgsz = st.sidebar.slider("Image Size", min_value=128, max_value=1280, step=32, value=224)
-    batch_size = st.sidebar.selectbox("Batch Size", [1, 2, 4, 6, 8, 16, 32, 64, -1], index=1)
-    device_opt = st.sidebar.selectbox("Device", ["cpu", "0"], index=0)
-    optimizer = st.sidebar.selectbox("Optimizer", ["auto", "SGD", "Adam", "AdamW"], index=0)
-    learning_rate = st.sidebar.number_input("Learning Rate (lr0)", value=0.01, format="%.4f")
+        with data_tabs[1]:
+            st.caption("Download directly via Roboflow API")
+            rf_api_key = st.text_input("API Key:", type="password")
+            rf_workspace = st.text_input("Workspace Name:")
+            rf_project = st.text_input("Project Name:")
+            rf_version = st.number_input("Version Number:", min_value=1, step=1)
+            
+            if st.button("Download from Roboflow", use_container_width=True):
+                if not rf_api_key or not rf_workspace or not rf_project:
+                    st.warning("Please fill in all Roboflow fields.")
+                else:
+                    with st.spinner("Connecting to Roboflow..."):
+                        try:
+                            rf = Roboflow(api_key=rf_api_key)
+                            project = rf.workspace(rf_workspace).project(rf_project)
+                            dataset = project.version(rf_version).download("yolov8", location=f"datasets/{rf_project}_v{rf_version}")
+                            
+                            downloaded_yaml = os.path.join(dataset.location, "data.yaml")
+                            if os.path.exists(downloaded_yaml):
+                                st.session_state.train_yaml_path = downloaded_yaml
+                                st.toast("Roboflow dataset ready!", icon="✅")
+                            else:
+                                st.error("Downloaded successfully, but couldn't locate data.yaml.")
+                        except Exception as e:
+                            st.error(f"Roboflow Error: {e}")
+
+        with data_tabs[2]:
+            st.caption("Paste a shared GDrive link or direct ZIP URL")
+            cloud_url = st.text_input("Dataset URL:")
+            is_gdrive = "drive.google.com" in cloud_url
+            
+            if st.button("Download & Extract", use_container_width=True):
+                if not cloud_url:
+                    st.warning("Please enter a valid URL.")
+                else:
+                    with st.spinner("Downloading dataset... this might take a minute."):
+                        dest_folder = os.path.join("datasets", "cloud_download")
+                        os.makedirs(dest_folder, exist_ok=True)
+                        
+                        found_yaml = None
+                        if is_gdrive:
+                            found_yaml = download_gdrive_folder(cloud_url, dest_folder)
+                        else:
+                            try:
+                                local_zip = os.path.join(dest_folder, "download.zip")
+                                r = requests.get(cloud_url, stream=True)
+                                with open(local_zip, 'wb') as f:
+                                    for chunk in r.iter_content(chunk_size=8192): 
+                                        f.write(chunk)
+                                found_yaml = extract_dataset_zip(local_zip, dest_folder)
+                            except Exception as e:
+                                st.error(f"Direct download failed: {e}")
+                                
+                        if found_yaml:
+                            st.session_state.train_yaml_path = found_yaml
+                            st.toast("Cloud dataset downloaded and extracted!", icon="✅")
+                        else:
+                            st.error("Download finished, but no .yaml file was found in the extracted folder.")
+
+        st.divider()
+        yaml_path_input = st.text_input("Active Target YAML Path:", value=st.session_state.train_yaml_path)
+        st.session_state.train_yaml_path = yaml_path_input
+
+
+    with st.sidebar.container(border=True):
+        st.subheader("2. Base Model Selection")
+        model_type = st.selectbox("Select Model Weights", [
+            "yolov8n.pt (Nano - Fastest)",
+            "yolov8s.pt (Small - Better Accuracy)",
+            "yolov8m.pt (Medium - Balanced)",
+            "Custom Path..."
+        ])
+        
+        if model_type == "Custom Path...":
+            if "custom_base_pt" not in st.session_state:
+                st.session_state.custom_base_pt = "yolov8n.pt"
+                
+            browsed_base_pt = web_file_browser("🔍 Browse for Base Model", extension=".pt", key_prefix="base_pt_browser")
+            if browsed_base_pt:
+                st.session_state.custom_base_pt = browsed_base_pt
+                
+            model_path = st.text_input("Custom .pt path:", value=st.session_state.custom_base_pt)
+        else:
+            model_path = model_type.split(" ")[0]
+
+    with st.sidebar.container(border=True):
+        st.subheader("3. Training Parameters")
+        epochs = st.number_input("Epochs", min_value=1, value=10)
+        imgsz = st.slider("Image Size", min_value=128, max_value=1280, step=32, value=224)
+        batch_size = st.selectbox("Batch Size", [1, 2, 4, 6, 8, 16, 32, 64, -1], index=1)
+        device_opt = st.selectbox("Device", ["cpu", "0"], index=0)
+        col_opt, col_lr = st.columns(2)
+        with col_opt:
+            optimizer = st.selectbox("Optimizer", ["auto", "SGD", "Adam", "AdamW"], index=0)
+        with col_lr:
+            learning_rate = st.number_input("Learning Rate", value=0.01, format="%.4f")
 
     st.sidebar.divider()
-    st.sidebar.header("🧹 Cleanup")
-    st.sidebar.caption("Run this between training sessions to fully free GPU memory.")
-    if st.sidebar.button("Free GPU Memory", type="secondary"):
+    if st.sidebar.button("🧹 Free GPU Memory", type="secondary", use_container_width=True, help="Run this between training sessions."):
         gpu_cleanup("Training session cleared")
 
     # --- Class Editor ---
@@ -270,7 +478,7 @@ elif mode == "🏋️ Train Model":
                     yaml_data['names'], yaml_data['nc'] = new_list, len(new_list)
                     with open(yaml_path_input, 'w') as f:
                         yaml.dump(yaml_data, f, sort_keys=False)
-                    st.success("Updated!")
+                    st.toast("YAML Updated Successfully!", icon="✅")
                     st.rerun()
             except Exception as e:
                 st.error(f"Error reading YAML: {e}")
@@ -278,7 +486,7 @@ elif mode == "🏋️ Train Model":
     st.divider()
 
     # --- Training Execution ---
-    if st.button("🚀 Start Training", type="primary"):
+    if st.button("🚀 Start Training", type="primary", use_container_width=True):
         if not os.path.exists(yaml_path_input) or (model_type == "Custom Path..." and not os.path.exists(model_path)):
             st.error("ERROR: Check dataset or model paths.")
         else:
@@ -326,20 +534,18 @@ elif mode == "🏋️ Train Model":
             st.session_state.prepared_zip_path = None
             st.success(f"Training Complete! Saved to: {results.save_dir}")
 
-            # Free the training model from GPU immediately after training
             del model
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.ipc_collect()
-            st.info("🧹 Training model unloaded from GPU memory.")
+            st.toast("🧹 Training model unloaded from GPU memory.")
 
-            # Auto-offer: load the freshly trained model into the detector
             trained_weights = os.path.join(str(results.save_dir), "weights", "best.pt")
             if os.path.exists(trained_weights):
-                if st.button("🎯 Load this model into Detector"):
+                if st.button("🎯 Load this model into Detector", use_container_width=True):
                     st.session_state.model = YOLO(trained_weights)
-                    st.success("Model loaded! Switch to 'Run Detection' mode in the sidebar.")
+                    st.toast("Model loaded! Switch to 'Run Detection' mode in the sidebar.", icon="✅")
 
     st.divider()
 
@@ -419,7 +625,7 @@ elif mode == "🏋️ Train Model":
                 zip_rename += ".zip"
             col_pack, col_down = st.columns(2)
             with col_pack:
-                if st.button("1. Pack Directory"):
+                if st.button("1. Pack Directory", use_container_width=True):
                     with st.spinner("Zipping files..."):
                         st.session_state.prepared_zip_path = create_full_zip(target_dir)
                     st.success("Packed! Ready for download.")
@@ -431,7 +637,8 @@ elif mode == "🏋️ Train Model":
                             data=f,
                             file_name=zip_rename,
                             mime="application/zip",
-                            type="primary"
+                            type="primary",
+                            use_container_width=True
                         )
 
         with tab_drive:
@@ -445,13 +652,14 @@ elif mode == "🏋️ Train Model":
                     pt_rename += ".pt"
                 gdrive_link = st.text_input("Paste Shared Google Drive Folder Link:")
                 json_key_path = st.text_input("Local path to JSON Key file:", value="credentials.json")
-                if st.button("Upload Model", type="primary"):
+                if st.button("Upload Model", type="primary", use_container_width=True):
                     if not gdrive_link:
                         st.warning("Please provide the Google Drive folder link.")
                     elif not os.path.exists(json_key_path):
                         st.error(f"Could not find the JSON key at: {json_key_path}.")
                     else:
-                        folder_id = gdrive_link.split("/")[-1].split("?")[0]
-                        upload_single_file_to_gdrive(weights_file, pt_rename, folder_id, json_key_path)
+                        with st.spinner("Authenticating and uploading to Google Drive..."):
+                            folder_id = gdrive_link.split("/")[-1].split("?")[0]
+                            upload_single_file_to_gdrive(weights_file, pt_rename, folder_id, json_key_path)
     else:
         st.info("Enter a valid training directory path to view past results and export them.")
