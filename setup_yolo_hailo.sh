@@ -7,12 +7,12 @@ echo "Starting System Setup..."
 
 # 1. Install System Requirements and Dependencies
 echo "Installing system packages..."
-sudo apt update && sudo apt install -y build-essential zlib1g-dev libncurses-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget
-sudo apt install htop -y
-sudo apt update && sudo apt install -y libbz2-dev libsqlite3-dev liblzma-dev
-sudo apt install linux-tools-generic hwdata -y
-sudo apt-get install -y cmake
-sudo apt-get install -y libjpeg-dev zlib1g-dev
+# Consolidated all apt commands into a single, faster transaction
+sudo apt update
+sudo apt install -y build-essential zlib1g-dev libncurses-dev libgdbm-dev \
+    libnss3-dev libssl-dev libreadline-dev libffi-dev wget htop \
+    libbz2-dev libsqlite3-dev liblzma-dev linux-tools-generic hwdata \
+    cmake libjpeg-dev
 
 # 2. Check and Install Python 3.11.9
 TARGET_PY_VERSION="3.11.9"
@@ -43,6 +43,8 @@ if [ "$SKIP_PYTHON" = false ]; then
     make -j $(nproc)
     sudo make altinstall
     cd ..
+    # Clean up the large tarball to save space
+    rm Python-3.11.9.tgz 
 fi
 
 echo "Python Version Verified:"
@@ -50,36 +52,44 @@ $PYTHON_CMD --version
 
 # 3. Environment Setup for YOLO Model Training
 echo "Setting up ai_env for YOLO..."
-python3.11 -m venv ai_env
+$PYTHON_CMD -m venv ai_env
 source ai_env/bin/activate
 pip install --upgrade pip
 pip install ultralytics
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Fixed: Now fetching CUDA 12.6 to support the RTX 5070's Blackwell architecture
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+
 deactivate
 echo "ai_env setup complete."
 
 # 4. Hailo Dataflow Compiler Environment Setup
 echo "Setting up Hailo environment (hailo_dfc_env)..."
-python3.11 -m venv hailo_dfc_env
+$PYTHON_CMD -m venv hailo_dfc_env
 source hailo_dfc_env/bin/activate
 
-# --- ADD THESE TWO LINES ---
 echo "Downloading Hailo Dataflow Compiler from GitHub Releases..."
-wget https://github.com/Airium001/airium-yolo-custom-train/releases/download/v1.0.0/hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
-# ---------------------------
+# Added -nc (no-clobber) so it doesn't repeatedly download the wheel if you rerun the script
+wget -nc https://github.com/Airium001/airium-yolo-custom-train/releases/download/v1.0.0/hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
 
 echo "Installing Hailo Dataflow Compiler..."
-pip install hailo_dataflow_compiler-*.whl
+# Target the specific filename instead of a wildcard to avoid accidental conflicts
+pip install hailo_dataflow_compiler-5.2.0-py3-none-linux_x86_64.whl
 
 echo "Setting up Hailo Model Zoo..."
-git clone https://github.com/hailo-ai/hailo_model_zoo.git
+# Prevent fatal git errors by checking if the directory already exists
+if [ ! -d "hailo_model_zoo" ]; then
+    git clone https://github.com/hailo-ai/hailo_model_zoo.git
+fi
 cd hailo_model_zoo
 pip install -e .
 cd ..
 
 echo "Cloning RasPi YOLO repository..."
-git clone https://github.com/LukeDitria/RasPi_YOLO.git
+if [ ! -d "RasPi_YOLO" ]; then
+    git clone https://github.com/LukeDitria/RasPi_YOLO.git
+fi
 
 deactivate
 echo "Hailo compilation environment setup complete."
-echo "All installations finished successfully! You are ready for compilation."
+echo "All installations finished successfully! You are ready to begin bypassing your models."
