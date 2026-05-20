@@ -9,11 +9,12 @@ opencv-python-headless==4.13.0.92
 PyYAML==6.0.3
 tqdm==4.67.3
 
-# Model Training & Inference
+# Model Training & Inference (Pointed to CUDA 12.6 for Blackwell architecture)
+--extra-index-url https://download.pytorch.org/whl/cu126
 ultralytics==8.4.14
-torch==2.7.1+cu118
-torchvision==0.22.1+cu118
-torchaudio==2.7.1+cu118
+torch==2.7.1+cu126
+torchvision==0.22.1+cu126
+torchaudio==2.7.1+cu126
 
 # Live Camera Streaming
 streamlit-webrtc==0.64.5
